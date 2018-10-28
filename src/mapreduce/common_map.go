@@ -69,7 +69,7 @@ func doMap(
 
     encoders := make([]*json.Encoder, nReduce)
 
-    for i, _ := range encoders {
+    for i := range encoders {
         f, err := os.Create(reduceName(jobName, mapTask, i))
         check_error(err)
         encoders[i] = json.NewEncoder(f)
@@ -78,7 +78,7 @@ func doMap(
         defer f.Close()
     }
 
-    for i, _ := range key_values {
+    for i := range key_values {
         iReduce := ihash(key_values[i].Key) % nReduce
         encoders[iReduce].Encode(&key_values[i])
     }
