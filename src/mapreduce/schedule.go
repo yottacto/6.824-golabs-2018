@@ -37,7 +37,7 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
     for i := 0; i < ntasks; i++ {
         tasks <- i
     }
-    close(tasks)
+    // close(tasks)
 
     go func() {
         for worker := range registerChan {
@@ -50,8 +50,12 @@ func schedule(jobName string, mapFiles []string, nReduce int, phase jobPhase, re
                         TaskNumber: task_id,
                         NumOtherPhase: n_other,
                     }
-                    call(worker, "Worker.DoTask", doTaskArgs, nil)
-                    done.Done()
+                    if call(worker, "Worker.DoTask", doTaskArgs, nil) {
+                        done.Done()
+                    } else {
+                        tasks <- task_id
+                        return
+                    }
                 }
             }(worker)
         }
