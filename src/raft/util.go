@@ -13,6 +13,7 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 }
 
 func SendRPCRequest(requestName string, request func() bool) bool {
+    // DPrintf("start request: %s", requestName)
     for {
         ok := request()
         if ok {

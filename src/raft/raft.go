@@ -31,8 +31,8 @@ import (
 
 // TODO timeout interval range, heartbeat interval
 // in millisecond
-const electionTimeoutLower = 100
-const electionTimeoutUpper = 300
+const electionTimeoutLower = 500
+const electionTimeoutUpper = 600
 const heartbeatInterval = 30 * time.Millisecond
 
 func getRandomElectionTimeout() time.Duration {
@@ -66,9 +66,9 @@ type ApplyMsg struct {
 }
 
 type LogEntry struct {
-    index int
-    term int
-    leader int
+    Index int
+    Term int
+    Leader int
 
     // TODO other log field
 }
@@ -144,17 +144,17 @@ func (rf *Raft) promoteToLeader() {
         if i == rf.me {
             continue
         }
-        var reply AppendEntriesReply
-        go rf.sendHeartbeat(rf.peers[i], i, &args, &reply)
+        go rf.sendHeartbeat(rf.peers[i], i, &args)
     }
 }
 
-func (rf *Raft) sendHeartbeat(end *labrpc.ClientEnd, i int, args *AppendEntriesArgs, reply *AppendEntriesReply) {
+func (rf *Raft) sendHeartbeat(end *labrpc.ClientEnd, i int, args *AppendEntriesArgs) {
     ticker := time.NewTicker(heartbeatInterval)
     for {
         <-ticker.C
         if rf.state == Leader && args.Term == rf.currentTerm {
-            go rf.sendAppendEntries(rf.peers[i], i, args, reply)
+            var reply AppendEntriesReply
+            go rf.sendAppendEntries(rf.peers[i], i, args, &reply)
         } else {
             break
         }
@@ -183,6 +183,8 @@ func (rf *Raft) startElectionProcess() {
     defer rf.Unlock()
 
     if rf.state != Leader && currentTime.Sub(rf.lastHeartbeat) > currentTimeout {
+        DPrintf("server <%s>'s random timeout is %s\n", rf.id, currentTimeout)
+        DPrintf("server <%s> begin election\n", rf.id)
         go rf.beginElection()
     }
     go rf.startElectionProcess()
@@ -190,7 +192,6 @@ func (rf *Raft) startElectionProcess() {
 
 func (rf *Raft) beginElection() {
     rf.Lock()
-    defer rf.Unlock()
 
     rf.transitionToCandidate()
 
@@ -208,15 +209,19 @@ func (rf *Raft) beginElection() {
     replies := make([]RequestVoteReply, npeers)
     for i := range rf.peers {
         if i != rf.me {
-            rf.sendRequestVote(rf.peers[i], i, vote, &args, &replies[i])
+            DPrintf("server <%s>'s sendRequestVote to %d on term %d\n", rf.id, i, args.Term)
+            go rf.sendRequestVote(rf.peers[i], i, vote, &args, &replies[i])
         }
     }
+    rf.Unlock()
 
     supporter := 1
     // opponent := 0
     // TODO optimization for n/2 opponent
-    for i := 1; i < npeers; i++ {
-        reply := replies[<-vote]
+    // FIXME Unlock of unlocked mutex, when i == npeers - 1, never stop
+    for i := 0; i < npeers; i++ {
+        id := <-vote
+        reply := replies[id]
 
         rf.Lock()
         if reply.Term > rf.currentTerm {
@@ -226,8 +231,11 @@ func (rf *Raft) beginElection() {
         if reply.VoteGranted {
             supporter += 1
         }
+        DPrintf("server <%s> recieve reply from %d, Term is %d, VoteGranted is %t\n", rf.id, id, reply.Term, reply.VoteGranted)
+        DPrintf("server <%s> got %d supporters\n", rf.id, supporter)
         if supporter > npeers / 2 {
             if rf.state == Candidate && args.Term == rf.currentTerm {
+                DPrintf("server <%s> became leader\n", rf.id)
                 go rf.promoteToLeader()
                 break
             } else {
@@ -359,9 +367,17 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
     if args.Term < rf.currentTerm {
         return
     }
-    if len(rf.votedFor) == 0 || rf.votedFor == args.CandidateID  {
-        reply.VoteGranted = true
+    // FIXME >= ?
+    if args.Term > rf.currentTerm {
+        rf.transitionToFollower(args.Term)
         rf.votedFor = args.CandidateID
+        reply.VoteGranted = true
+        rf.lastHeartbeat = time.Now()
+        return
+    }
+    if len(rf.votedFor) == 0 || rf.votedFor == args.CandidateID  {
+        rf.votedFor = args.CandidateID
+        reply.VoteGranted = true
         rf.lastHeartbeat = time.Now()
     }
 }
