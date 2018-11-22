@@ -195,8 +195,8 @@ func (rf *Raft) sendAppendEntries(end *labrpc.ClientEnd, i, term int) {
             lastTerm = rf.log[lastIndex - 1].Term
         }
 
-        DPrintf("server <%s, term=%d> to server <%d>, rf.nextIndex=[%d]\n",
-            rf.id, rf.currentTerm, i, rf.nextIndex[i])
+        DPrintf("server <%s, term=%d> to server <%d>, rf.nextIndex=[%d], cmd=[%v]\n",
+            rf.id, rf.currentTerm, i, rf.nextIndex[i], rf.log[lastIndex:])
 
         args := AppendEntriesArgs{
             Term: rf.currentTerm,
@@ -214,8 +214,8 @@ func (rf *Raft) sendAppendEntries(end *labrpc.ClientEnd, i, term int) {
         }
         if SendRPCRequest(requestName, request) {
             rf.Lock()
-            DPrintf("server <%s, term=%d> got reply from sever <%d>, term=[%d], success=[%t]\n",
-                rf.id, args.Term, i, reply.Term, reply.Success)
+            DPrintf("server <%s, term=%d> got reply from sever <%d>, term=[%d], success=[%t]\n, cmd=[%v]",
+                rf.id, args.Term, i, reply.Term, reply.Success, args.Entries)
 
             if args.Term != rf.currentTerm {
                 break
@@ -306,6 +306,11 @@ func (rf *Raft) startElectionProcess() {
 
 func (rf *Raft) beginElection() {
     rf.Lock()
+
+    if rf.decommission {
+        rf.Unlock()
+        return
+    }
 
     rf.transitionToCandidate()
 
@@ -446,7 +451,8 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
     }
 
     // check entry confliction
-    for i := range args.Entries {
+    i := 0
+    for ; i < len(args.Entries); i += 1 {
         if len(rf.log) <= i + args.PrevLogIndex {
             break
         }
@@ -456,9 +462,15 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
             break
         }
     }
+    args.Entries = args.Entries[i:]
 
     // append new entries
     rf.log = append(rf.log, args.Entries...)
+
+    DPrintf("AppendEntries: server <%s> called from server <%s>, args=%v\n",
+        rf.id, args.LeaderID, args)
+    DPrintf("AppendEntries: server <%s> called from server <%s>, after append log=%v\n",
+        rf.id, args.LeaderID, rf.log)
 
     if args.LeaderCommit > rf.commitIndex {
         rf.commitIndex = Min(args.LeaderCommit, len(rf.log))
