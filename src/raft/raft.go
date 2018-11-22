@@ -33,7 +33,8 @@ import (
 // in millisecond
 const electionTimeoutLower = 500
 const electionTimeoutUpper = 600
-const heartbeatInterval = 30 * time.Millisecond
+// TODO send heartbeat idle time only, not periodically
+const heartbeatInterval = 100 * time.Millisecond
 const commitApplyIdleInterval = 30 * time.Millisecond
 
 func getRandomElectionTimeout() time.Duration {
