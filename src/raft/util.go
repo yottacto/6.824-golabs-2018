@@ -6,7 +6,7 @@ import (
 )
 
 // Debugging
-const Debug = 0
+const Debug = 1
 const RPCMaxAttempts = 4
 const RPCTimeout = 50 * time.Millisecond
 
@@ -25,7 +25,7 @@ func Min(x, y int) int {
 }
 
 func SendRPCRequest(requestName string, request func() bool) bool {
-    // DPrintf("start request: %s", requestName)
+    DPrintf("start request: %s", requestName)
     makeRequest := func(success chan bool) {
         if request() {
             success <- true
@@ -38,11 +38,11 @@ func SendRPCRequest(requestName string, request func() bool) bool {
             case <-success:
                 return true
             case <-time.After(RPCTimeout):
-                // DPrintf("request %s attempt [%d] timeout", requestName, i)
+                DPrintf("request %s attempt [%d] timeout", requestName, i)
                 continue
         }
     }
-    // DPrintf("rpc %s failed", requestName)
+    DPrintf("rpc %s failed", requestName)
     return false
 }
 
