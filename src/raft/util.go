@@ -6,7 +6,7 @@ import (
 )
 
 // Debugging
-const Debug = 1
+const Debug = 0
 const RPCMaxAttempts = 4
 const RPCTimeout = 50 * time.Millisecond
 
@@ -19,6 +19,13 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 
 func Min(x, y int) int {
     if x < y {
+        return x
+    }
+    return y
+}
+
+func Max(x, y int) int {
+    if x > y {
         return x
     }
     return y
