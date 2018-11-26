@@ -258,7 +258,8 @@ func (rf *Raft) sendAppendEntries(i int, peerAppendChan chan struct{}) {
             DPrintf("Log deviation: from server <%s, term=%d> to server <%d>, args.[T: %d, I: %d], reply.[Term: %d, ConflictLogTerm: %d, ConflictLogIndex: %d], prev nextIndex=[%d], reduced nextIndex=[%d], \n",
                 rf.id, rf.currentTerm, i, args.PrevLogTerm, args.PrevLogIndex, reply.Term, reply.ConflictLogTerm, reply.ConflictLogIndex, rf.nextIndex[i], Max(1, reply.ConflictLogIndex-1))
             // TODO need a loop to find first term not match
-            rf.nextIndex[i] = Max(1, reply.ConflictLogIndex - 1)
+            // FIXME Max(1, reply.ConflictLogIndex-1)) ????
+            rf.nextIndex[i] = Max(1, reply.ConflictLogIndex)
             peerAppendChan <- struct{}{}
         }
     }
