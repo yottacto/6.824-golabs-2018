@@ -1,47 +1,47 @@
 package raftkv
 
 import (
-	"labgob"
-	"labrpc"
-	"log"
-	"raft"
-	"sync"
+    "labgob"
+    "labrpc"
+    "log"
+    "raft"
+    "sync"
 )
 
 const Debug = 0
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
-	if Debug > 0 {
-		log.Printf(format, a...)
-	}
-	return
+    if Debug > 0 {
+        log.Printf(format, a...)
+    }
+    return
 }
 
 
 type Op struct {
-	// Your definitions here.
-	// Field names must start with capital letters,
-	// otherwise RPC will break.
+    // Your definitions here.
+    // Field names must start with capital letters,
+    // otherwise RPC will break.
 }
 
 type KVServer struct {
-	mu      sync.Mutex
-	me      int
-	rf      *raft.Raft
-	applyCh chan raft.ApplyMsg
+    mu      sync.Mutex
+    me      int
+    rf      *raft.Raft
+    applyCh chan raft.ApplyMsg
 
-	maxraftstate int // snapshot if log grows this big
+    maxraftstate int // snapshot if log grows this big
 
-	// Your definitions here.
+    // Your definitions here.
 }
 
 
 func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
-	// Your code here.
+    // Your code here.
 }
 
 func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
-	// Your code here.
+    // Your code here.
 }
 
 //
@@ -51,8 +51,8 @@ func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 // turn off debug output from this instance.
 //
 func (kv *KVServer) Kill() {
-	kv.rf.Kill()
-	// Your code here, if desired.
+    kv.rf.Kill()
+    // Your code here, if desired.
 }
 
 //
@@ -70,20 +70,21 @@ func (kv *KVServer) Kill() {
 // for any long-running work.
 //
 func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int) *KVServer {
-	// call labgob.Register on structures you want
-	// Go's RPC library to marshall/unmarshall.
-	labgob.Register(Op{})
+    // call labgob.Register on structures you want
+    // Go's RPC library to marshall/unmarshall.
+    labgob.Register(Op{})
 
-	kv := new(KVServer)
-	kv.me = me
-	kv.maxraftstate = maxraftstate
+    kv := new(KVServer)
+    kv.me = me
+    kv.maxraftstate = maxraftstate
 
-	// You may need initialization code here.
+    // You may need initialization code here.
 
-	kv.applyCh = make(chan raft.ApplyMsg)
-	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
+    kv.applyCh = make(chan raft.ApplyMsg)
+    kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 
-	// You may need initialization code here.
+    // You may need initialization code here.
 
-	return kv
+    return kv
 }
+
