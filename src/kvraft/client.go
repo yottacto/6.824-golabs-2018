@@ -1,9 +1,10 @@
 package raftkv
 
-import "labrpc"
-import "crypto/rand"
-import "math/big"
-
+import (
+    "labrpc"
+    "crypto/rand"
+    "math/big"
+ )
 
 type Clerk struct {
     servers []*labrpc.ClientEnd
@@ -37,9 +38,31 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 // arguments. and reply must be passed as a pointer.
 //
 func (ck *Clerk) Get(key string) string {
-
     // You will have to modify this function.
-    return ""
+    DPrintf("Get: key=[%s]\n", key)
+    lastServer := 0
+    requestName := "KVServer.Get"
+    args := GetArgs{
+        Key: key,
+    }
+    reply := GetReply{}
+    request := func() bool {
+        reply = GetReply{}
+        return ck.servers[lastServer].Call(requestName, &args, &reply)
+    }
+    for {
+        DPrintf("client sending <Get> to <%d>, key is [%s]\n", lastServer, key)
+        if SendRPCRequest(requestName, request) {
+            DPrintf("client got reply from <%d>\n", lastServer)
+            if reply.WrongLeader {
+                DPrintf("the server is not the leader")
+                lastServer = (lastServer + 1) % len(ck.servers)
+            } else {
+                break
+            }
+        }
+    }
+    return reply.Value
 }
 
 //
@@ -54,6 +77,32 @@ func (ck *Clerk) Get(key string) string {
 //
 func (ck *Clerk) PutAppend(key string, value string, op string) {
     // You will have to modify this function.
+
+    DPrintf("PutAppend: op=[%s], key=[%s], value=[%s]\n", op, key, value)
+    lastServer := 0
+    requestName := "KVServer.PutAppend"
+    args := PutAppendArgs{
+        Key:   key,
+        Value: value,
+        Op:    op,
+    }
+    reply := PutAppendReply{}
+    request := func() bool {
+        reply = PutAppendReply{}
+        return ck.servers[lastServer].Call(requestName, &args, &reply)
+    }
+    for {
+        DPrintf("client sending <%s> to <%d>, key=[%s], value=[%s]\n", op, lastServer, key, value)
+        if SendRPCRequest(requestName, request) {
+            DPrintf("client got reply from <%d> for <%s>\n", lastServer, op)
+            if reply.WrongLeader {
+                DPrintf("the server is not the leader")
+                lastServer = (lastServer + 1) % len(ck.servers)
+            } else {
+                break
+            }
+        }
+    }
 }
 
 func (ck *Clerk) Put(key string, value string) {
